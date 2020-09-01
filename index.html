@@ -1,91 +1,116 @@
-<script src="https://apis.google.com/js/api.js"></script>
-<script>
-  let c =0;
-  let data = [];
-  let nextPageToken = '';
-  let initParams = {
-      "part": [
-        "snippet,contentDetails"
-      ],
-      "mine": true,
-      "order": "relevance",
-      "pageToken" : nextPageToken
-    }
-  /**
-   * Sample JavaScript code for youtube.search.list
-   * See instructions for running APIs Explorer code samples locally:
-   * https://developers.google.com/explorer-help/guides/code_samples#javascript
-   */
-// This only works with a server running - python -m SimpleHTTPServer 8000, follow docs to the T and SO : https://stackoverflow.com/questions/32896597/gapi-auth2-externallyvisibleerror-invalid-cookiepolicy
+<!-- 1. add using http call 
+2. decide on what to show
+3. add head title -->
 
-//Changed js origins to http://localhost:8000/working.html in OAuth for this to work with MINE 
-  function authenticate() {
-    return gapi.auth2.getAuthInstance()
-        .signIn({scope: "https://www.googleapis.com/auth/youtube.force-ssl"})
-        .then(function() { console.log("Sign-in successful"); },
-              function(err) { console.error("Error signing in", err); });
-  }
-  function loadClient() {
-    gapi.client.setApiKey("");
-    return gapi.client.load("https://www.googleapis.com/discovery/v1/apis/youtube/v3/rest")
-        .then(function() { console.log("GAPI client loaded for API"); },
-              function(err) { console.error("Error loading GAPI client for API", err); });
-  }
-  // Make sure the client is loaded and sign-in is complete before calling this method.
+<!--  -->
 
-  function execute(params) {
-    return gapi.client.youtube.subscriptions.list(params)
-        .then(function(response) {
-                // Handle the results here (response.result has the parsed body).
-                // console.log("Full Response", response);
-                // console.log("Items", response.result.items);
-                // console.log(nextPageToken);
-                // data.push(response);
-                // data.push(response.result.items);
-                // console.log(response);
-                nextPageToken = response.result.nextPageToken;
-                
-                c += 1;
-                if(nextPageToken != undefined){
-                  params = {
-                    "part": [
-                      "snippet,contentDetails"
-                      ],
-                      "mine": true,
-                      "order": "relevance",
-                      "pageToken" : nextPageToken
-                      };
-                      for(let x = 0; x < response.result.items.length ; x++){
-                        // console.log(response);
-                        data.push(response.result.items[x].snippet.title);
-                        console.log(response.result.items[x].snippet.title);
-                      }
-                      // console.log(response.result.prevPageToken);
-                      // console.log(response.result.nextPageToken);
-                  execute(params);
-                }
+<!DOCTYPE HTML>
+<html>
+	<body>
+	<head>
+		<link rel="stylesheet" type="text/css" href="stylesheet.css" media="screen"/>
+	</head>
+	</body>
+		<p>API Data Explorer</p>
+		<div class="buttonDiv">
+			<label>Your Cloud Function URL</label>
+			<input class = "inputText" id="cloudFunctionURL"></input>
+			<br>
+			<br>
+			<label>Your API Key</label>
+			<input class = "inputText" id="apikey"></input>
+			<br>
+			<br>
+			<label>Your Client ID</label>
+			<input class = "inputText" id="clientid"></input>
+			<br>
+			<br>
+			<label>Your Client Secret</label>
+			<input class = "inputText" id="clientSecret"></input>
+			<br>
+			<br>
+			<button class = "buttonclass" id = "authAndLoadButton" onclick="authAndLoad()">Authorize & Load</button>
+			<button class = "buttonclass" id = "executeButton" onclick="execute()">Call API</button>
+		</div>
+		<br>
+		<br>
+		<div id="fetchUpdateDiv"></div>
+		<script>
+			
+			let div = document.getElementById("fetchUpdateDiv");
+			let body = {};
+			
+			function authAndLoad(){
+				let result = validateForms();
 
+				if(result){
+					div.innerHTML = "";
+					let loaderDiv = document.createElement("div");
+					loaderDiv.className = "loader";
+					document.body.insertAdjacentElement('afterend', loaderDiv);
+					fetch(document.getElementById("cloudFunctionURL").value.toString(),{
+					// fetch("http://localhost:8000",{
+						method: 'POST',
+						// headers have to be added as new headers!
+						headers: new Headers(
+							{
+								'Content-Type': 'application/json',
+								// https://stackoverflow.com/questions/1256593/why-am-i-getting-an-options-request-instead-of-a-get-request
+								// this fixed our problem, changing from "application/json" to "text/plain" stopped the horrible options request – Keeno Jul 12 '13 at 9:44
+								// the two below did nothing! Might want to setup this in function
+								// 'Access-Control-Allow-Methods': 'POST',
+    							// 'Access-Control-Allow-Headers': 'Content-Type'
+							}),
+						body: JSON.stringify(body),
+						mode: 'cors'
+					})
+					.then((response)=>{
+						// had to use response.text and not response.json since server sending response as text/html
+						return response.text();
+					// fetch promise needs to be resolved to get the server response
+						}).then((jsonload)=>{
+							resetTextColor();
+							loaderDiv.remove();
+							resetTextColor();
+							div.innerHTML = jsonload;
+						}).catch((err)=>{
+							resetTextColor();
+							loaderDiv.remove();
+							// loaderDiv.style.display = "none";
+							div.innerHTML = err;
+						});
+				}
+			}
 
-              },
-              function(err) { console.error("Execute error", err); });
-  }
-  gapi.load("client:auth2", function() {
-    console.log('I am here');
-    gapi.auth2.init({client_id: ""});
-  });
-</script>
-<button onclick="authenticate().then(loadClient)">Authorize & Load</button>
-<button onclick="execute(initParams)">execute</button>
+			function validateForms(){
+				let apikey = document.getElementById("apikey").value;
+				let clientid = document.getElementById("clientid").value;
+				let clientSecret = document.getElementById("clientSecret").value;
 
+				if(apikey == '' || clientid == '' ||  clientSecret == ''){
+					div.innerHTML = "Error!";
+					div.style.color = "red";
+					return false;
+				}
+				else{
+					body = {
+						key : apikey,
+						id : clientid,
+						secret : clientSecret
+					}
+					return true;
+				}
+			}
 
+			function execute(){
+				div.innerHTML = "API Called";
+				resetTextColor();
+			}
 
-<!-- Todo:
-1. Logout button, or see if user is still logged on / Revove Access Button
-2. Refresh token exchange?
-3. Just the youtube browser unsub script into an extension, do it on GUI level
-4. Check how much it will cost?
-5. Compare youtube channel title against what is displayed that is important to defeat this....and get the right count...
-6. Authorize and load in single button
-7. Add Sweetalert
+			function resetTextColor(){
+				div.style.color = "";
+			}
 
-eg : for ID channel : UCqAbcgEp4NqCRnLG3NVJezw, the title is ひのき猫, while the localized title is Hinoki-Cat-->
+		</script>
+		<br></br>
+</html>
