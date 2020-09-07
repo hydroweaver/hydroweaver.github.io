@@ -1,14 +1,8 @@
-<!-- 1. add using http call 
-2. decide on what to show
-3. add head title -->
-
-<!--  -->
-
 <!DOCTYPE HTML>
 <html>
 	<body>
 	<head>
-		<link rel="stylesheet" type="text/css" href="main.css" media="screen"/>
+		<link rel="stylesheet" type="text/css" href="stylesheet.css" media="screen"/>
 	</head>
 	</body>
 		<p>API Data Explorer</p>
@@ -35,6 +29,9 @@
 		<br>
 		<br>
 		<div id="fetchUpdateDiv"></div>
+		<div>
+			<a id="googAuthResponseURL"></a>
+		</div>
 		<script>
 			
 			let div = document.getElementById("fetchUpdateDiv");
@@ -48,8 +45,9 @@
 					let loaderDiv = document.createElement("div");
 					loaderDiv.className = "loader";
 					document.body.insertAdjacentElement('afterend', loaderDiv);
+
 					fetch(document.getElementById("cloudFunctionURL").value.toString(),{
-					// fetch("http://localhost:8000",{
+					// 	fetch("http://localhost:8000",{
 						method: 'POST',
 						// headers have to be added as new headers!
 						headers: new Headers(
@@ -69,10 +67,19 @@
 						return response.text();
 					// fetch promise needs to be resolved to get the server response
 						}).then((jsonload)=>{
-							resetTextColor();
-							loaderDiv.remove();
-							resetTextColor();
-							div.innerHTML = jsonload;
+							if(jsonload.length > 45 && jsonload.slice(0,45) == 'https://accounts.google.com/o/oauth2/v2/auth?'){
+								resetTextColor();
+								loaderDiv.remove();
+								resetTextColor();
+								document.getElementById('googAuthResponseURL').innerHTML = "Click to Authorize";
+								document.getElementById('googAuthResponseURL').href = jsonload;
+							}
+							else{
+								resetTextColor();
+								loaderDiv.remove();
+								resetTextColor();
+								div.innerHTML = jsonload;
+							}
 						}).catch((err)=>{
 							resetTextColor();
 							loaderDiv.remove();
@@ -113,7 +120,4 @@
 
 		</script>
 		<br></br>
-		<div>
-			<a href="privacypolicy.html">Privacy Policy</a>
-		</div>
 </html>
